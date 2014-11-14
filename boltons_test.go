@@ -88,3 +88,16 @@ func TestFirst(t *testing.T) {
 	assert.NotEqual(ts.ID, "", "should have an ID")
 	assert.NotEqual(ts.TestString, "", "should have a TestString")
 }
+
+func TestAll(t *testing.T) {
+	assert := assert.New(t)
+
+	db, err := Open("test.db", 0600, nil)
+	defer db.Close()
+	assert.NoError(err, "should not error")
+
+	tsList := []TestStruct{}
+	err = db.All(&tsList)
+	assert.NoError(err, "should not error")
+	assert.NotEqual(len(tsList), 0, "should have members")
+}

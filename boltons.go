@@ -130,6 +130,53 @@ func (db *DB) Get(s interface{}) error {
 	return err
 }
 
+func (db *DB) All(s interface{}) error {
+	errMsg := errors.New("Expected pointer to struct slice")
+
+	if x := reflect.TypeOf(s).Kind(); x != reflect.Ptr {
+		return errMsg
+	}
+	sValue := reflect.Indirect(reflect.ValueOf(s))
+	if x := sValue.Kind(); x != reflect.Slice {
+		return errMsg
+	}
+	sType := sValue.Type().Elem()
+	if x := sType.Kind(); x != reflect.Struct {
+		return errMsg
+	}
+
+	bucketName := sType.Name()
+
+	err := db.bolt.View(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket([]byte(bucketName))
+		cursor := bucket.Cursor()
+
+		for key, _ := cursor.First(); key != nil; key, _ = cursor.Next() {
+			inner := bucket.Bucket(key)
+			innerCursor := inner.Cursor()
+
+			member := reflect.New(sType).Elem()
+			for key, value := innerCursor.First(); key != nil; key, value = innerCursor.Next() {
+				field := member.FieldByName(string(key))
+				out := reflect.New(field.Type()).Interface()
+
+				err := json.Unmarshal(value, &out)
+				if err != nil {
+					return err
+				}
+
+				field.Set(reflect.Indirect(reflect.ValueOf(out)))
+			}
+
+			sValue.Set(reflect.Append(sValue, member))
+		}
+
+		return nil
+	})
+
+	return err
+}
+
 func (db *DB) First(s interface{}) error {
 	bucket, err := parseInput(s)
 	if err != nil {
