@@ -133,20 +133,21 @@ func (db *DB) Get(s interface{}) error {
 func (db *DB) All(s interface{}) error {
 	errMsg := errors.New("Expected pointer to struct slice")
 
-	if x := reflect.TypeOf(s).Kind(); x != reflect.Ptr {
+	if reflect.TypeOf(s).Kind() != reflect.Ptr {
 		return errMsg
 	}
+
 	sValue := reflect.Indirect(reflect.ValueOf(s))
-	if x := sValue.Kind(); x != reflect.Slice {
+	if sValue.Kind() != reflect.Slice {
 		return errMsg
 	}
+
 	sType := sValue.Type().Elem()
-	if x := sType.Kind(); x != reflect.Struct {
+	if sType.Kind() != reflect.Struct {
 		return errMsg
 	}
 
 	bucketName := sType.Name()
-
 	err := db.bolt.View(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket([]byte(bucketName))
 		cursor := bucket.Cursor()
