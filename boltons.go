@@ -6,6 +6,8 @@ import (
 	"os"
 	"reflect"
 
+	"code.google.com/p/go-uuid/uuid"
+
 	"github.com/boltdb/bolt"
 )
 
@@ -22,44 +24,85 @@ func Open(path string, mode os.FileMode, options *bolt.Options) (*DB, error) {
 	return &DB{db}, nil
 }
 
-func (db *DB) Save(s interface{}) error {
+type parsedBucket struct {
+	name   []byte
+	values map[string]reflect.Value
+}
+
+func bucketName(s interface{}) ([]byte, error) {
 	sType := reflect.TypeOf(s)
 	if sType.Kind() != reflect.Ptr {
-		return errors.New("Must be a pointer to a struct")
+		return []byte{}, errors.New("Must be a pointer to a struct")
 	}
 
 	sValue := reflect.Indirect(reflect.ValueOf(s))
 	if sValue.Kind() != reflect.Struct {
-		return errors.New("Must be a pointer to a struct")
+		return []byte{}, errors.New("Must be a pointer to a struct")
 	}
 
 	sType = sType.Elem()
-	err := db.bolt.Update(func(tx *bolt.Tx) error {
-		bucket, err := tx.CreateBucketIfNotExists([]byte(sType.Name()))
+	return []byte(sType.Name()), nil
+}
+
+func parseInput(s interface{}) (parsedBucket, error) {
+	bucket := parsedBucket{}
+
+	sType := reflect.TypeOf(s)
+	if sType.Kind() != reflect.Ptr {
+		return bucket, errors.New("Must be a pointer to a struct")
+	}
+
+	sValue := reflect.Indirect(reflect.ValueOf(s))
+	if sValue.Kind() != reflect.Struct {
+		return bucket, errors.New("Must be a pointer to a struct")
+	}
+
+	sType = sType.Elem()
+	bucket.name = []byte(sType.Name())
+	bucket.values = make(map[string]reflect.Value)
+
+	for i := 0; i < sValue.NumField(); i++ {
+		fValue := sValue.Field(i)
+		fType := sType.Field(i)
+
+		bucket.values[fType.Name] = fValue
+	}
+
+	return bucket, nil
+}
+
+func (db *DB) Save(s interface{}) error {
+	bucket, err := parseInput(s)
+	if err != nil {
+		return err
+	}
+
+	err = db.bolt.Update(func(tx *bolt.Tx) error {
+		outer, err := tx.CreateBucketIfNotExists(bucket.name)
 		if err != nil {
 			return err
 		}
 
-		id := sValue.FieldByName("ID")
+		id := bucket.values["ID"]
 		if id.String() == "" {
-			id.SetString("TEST_STRING")
+			id.SetString(uuid.New())
 		}
 
-		inner, err := bucket.CreateBucketIfNotExists([]byte(id.String()))
+		inner, err := outer.CreateBucketIfNotExists([]byte(id.String()))
 		if err != nil {
 			return err
 		}
 
-		for i := 0; i < sValue.NumField(); i++ {
-			fValue := sValue.Field(i)
-			fType := sType.Field(i)
-
-			bVal, err := json.Marshal(fValue.Interface())
+		for key, value := range bucket.values {
+			bVal, err := json.Marshal(value.Interface())
 			if err != nil {
 				return nil
 			}
 
-			inner.Put([]byte(fType.Name), bVal)
+			err = inner.Put([]byte(key), bVal)
+			if err != nil {
+				return err
+			}
 		}
 
 		return nil
@@ -69,40 +112,62 @@ func (db *DB) Save(s interface{}) error {
 }
 
 func (db *DB) Get(s interface{}) error {
-	sType := reflect.TypeOf(s)
-	if sType.Kind() != reflect.Ptr {
-		return errors.New("Must be a pointer to a struct")
+	bucket, err := parseInput(s)
+	if err != nil {
+		return err
 	}
 
-	sValue := reflect.Indirect(reflect.ValueOf(s))
-	if sValue.Kind() != reflect.Struct {
-		return errors.New("Must be a pointer to a struct")
-	}
+	err = db.bolt.View(func(tx *bolt.Tx) error {
+		outer := tx.Bucket(bucket.name)
 
-	sType = sType.Elem()
-	err := db.bolt.View(func(tx *bolt.Tx) error {
-		bucket := tx.Bucket([]byte(sType.Name()))
-
-		id := sValue.FieldByName("ID")
+		id := bucket.values["ID"]
 		if id.String() == "" {
-			// grab the first item
+			return errors.New("Unable to fetch without an ID")
 		}
 
-		inner := bucket.Bucket([]byte(id.String()))
+		inner := outer.Bucket([]byte(id.String()))
 
-		for i := 0; i < sValue.NumField(); i++ {
-			fValue := sValue.Field(i)
-			fType := sType.Field(i)
+		for key, value := range bucket.values {
+			bVal := inner.Get([]byte(key))
 
-			bVal := inner.Get([]byte(fType.Name))
-
-			out := reflect.New(fType.Type).Interface()
+			out := reflect.New(value.Type()).Interface()
 			err := json.Unmarshal(bVal, &out)
 			if err != nil {
 				return err
 			}
 
-			fValue.Set(reflect.Indirect(reflect.ValueOf(out)))
+			value.Set(reflect.Indirect(reflect.ValueOf(out)))
+		}
+
+		return nil
+	})
+
+	return err
+}
+
+func (db *DB) First(s interface{}) error {
+	bucket, err := parseInput(s)
+	if err != nil {
+		return err
+	}
+
+	err = db.bolt.View(func(tx *bolt.Tx) error {
+		outer := tx.Bucket(bucket.name)
+		cursor := outer.Cursor()
+
+		key, _ := cursor.First()
+		inner := outer.Bucket(key)
+
+		for key, value := range bucket.values {
+			bVal := inner.Get([]byte(key))
+
+			out := reflect.New(value.Type()).Interface()
+			err := json.Unmarshal(bVal, &out)
+			if err != nil {
+				return err
+			}
+
+			value.Set(reflect.Indirect(reflect.ValueOf(out)))
 		}
 
 		return nil

@@ -59,7 +59,11 @@ func TestGet(t *testing.T) {
 	defer db.Close()
 	assert.NoError(err, "should not error")
 
-	ts := TestStruct{
+	ts := TestStruct{}
+	err = db.Get(&ts)
+	assert.Error(err, "cannot fetch without being given an ID")
+
+	ts = TestStruct{
 		ID: "test-id",
 	}
 
@@ -69,4 +73,18 @@ func TestGet(t *testing.T) {
 	assert.Equal(ts.TestString, "string", "should have the TestString field set")
 	assert.Equal(ts.TestNumber, 1, "should have the TestNumber field set")
 	assert.Equal(ts.TestBool, false, "should have the TestBool field set")
+}
+
+func TestFirst(t *testing.T) {
+	assert := assert.New(t)
+
+	db, err := Open("test.db", 0600, nil)
+	defer db.Close()
+	assert.NoError(err, "should not error")
+
+	ts := TestStruct{}
+	err = db.First(&ts)
+	assert.NoError(err, "should not error")
+	assert.NotEqual(ts.ID, "", "should have an ID")
+	assert.NotEqual(ts.TestString, "", "should have a TestString")
 }
