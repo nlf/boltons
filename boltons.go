@@ -29,21 +29,6 @@ type parsedBucket struct {
 	values map[string]reflect.Value
 }
 
-func bucketName(s interface{}) ([]byte, error) {
-	sType := reflect.TypeOf(s)
-	if sType.Kind() != reflect.Ptr {
-		return []byte{}, errors.New("Must be a pointer to a struct")
-	}
-
-	sValue := reflect.Indirect(reflect.ValueOf(s))
-	if sValue.Kind() != reflect.Struct {
-		return []byte{}, errors.New("Must be a pointer to a struct")
-	}
-
-	sType = sType.Elem()
-	return []byte(sType.Name()), nil
-}
-
 func parseInput(s interface{}) (parsedBucket, error) {
 	bucket := parsedBucket{}
 
