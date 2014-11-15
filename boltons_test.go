@@ -141,11 +141,19 @@ func TestExists(t *testing.T) {
 	assert.NoError(err, "should not error")
 	assert.Equal(exists, true, "should return true")
 
+	exists, err = db.Exists(ts)
+	assert.NoError(err, "should not error")
+	assert.Equal(exists, true, "should return true")
+
 	ts = TestStruct{
 		ID: "not-here",
 	}
 
 	exists, err = db.Exists(&ts)
+	assert.NoError(err, "should not error")
+	assert.Equal(exists, false, "should return false")
+
+	exists, err = db.Exists(ts)
 	assert.NoError(err, "should not error")
 	assert.Equal(exists, false, "should return false")
 }
@@ -172,4 +180,18 @@ func TestDelete(t *testing.T) {
 	assert.NoError(err, "should not error")
 	assert.Equal(exists, false, "should return false")
 
+	wts := WrappedTestStruct{
+		ID: "nested",
+	}
+
+	exists, err = db.Exists(wts)
+	assert.NoError(err, "should not error")
+	assert.Equal(exists, true, "should return false")
+
+	err = db.Delete(wts)
+	assert.NoError(err, "should not error")
+
+	exists, err = db.Exists(wts)
+	assert.NoError(err, "should not error")
+	assert.Equal(exists, false, "should return false")
 }

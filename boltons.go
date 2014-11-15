@@ -29,13 +29,17 @@ type parsedBucket struct {
 	values map[string]reflect.Value
 }
 
-func parseInput(s interface{}) (parsedBucket, error) {
+func parseInput(s interface{}, writable bool) (parsedBucket, error) {
 	errMsg := errors.New("Expected struct pointer")
 	bucket := parsedBucket{}
 
 	sType := reflect.TypeOf(s)
-	if sType.Kind() != reflect.Ptr {
-		return bucket, errMsg
+	if sType.Kind() == reflect.Ptr {
+		sType = sType.Elem()
+	} else {
+		if writable {
+			return bucket, errMsg
+		}
 	}
 
 	sValue := reflect.Indirect(reflect.ValueOf(s))
@@ -43,7 +47,6 @@ func parseInput(s interface{}) (parsedBucket, error) {
 		return bucket, errMsg
 	}
 
-	sType = sType.Elem()
 	bucket.name = []byte(sType.Name())
 	bucket.values = make(map[string]reflect.Value)
 
@@ -58,7 +61,7 @@ func parseInput(s interface{}) (parsedBucket, error) {
 }
 
 func (db *DB) Save(s interface{}) error {
-	bucket, err := parseInput(s)
+	bucket, err := parseInput(s, true)
 	if err != nil {
 		return err
 	}
@@ -98,7 +101,7 @@ func (db *DB) Save(s interface{}) error {
 }
 
 func (db *DB) Get(s interface{}) error {
-	bucket, err := parseInput(s)
+	bucket, err := parseInput(s, true)
 	if err != nil {
 		return err
 	}
@@ -181,21 +184,13 @@ func (db *DB) All(s interface{}) error {
 
 func (db *DB) Keys(s interface{}) ([]string, error) {
 	keys := []string{}
-	errMsg := errors.New("Expected pointer to struct")
-
-	sValue := reflect.Indirect(reflect.ValueOf(s))
-	sType := sValue.Type()
-	if sValue.Kind() == reflect.Ptr {
-		sType = sType.Elem()
+	bucket, err := parseInput(s, false)
+	if err != nil {
+		return keys, err
 	}
 
-	if sType.Kind() != reflect.Struct {
-		return keys, errMsg
-	}
-
-	bucketName := sType.Name()
-	err := db.bolt.View(func(tx *bolt.Tx) error {
-		bucket := tx.Bucket([]byte(bucketName))
+	err = db.bolt.View(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket(bucket.name)
 		cursor := bucket.Cursor()
 
 		for key, _ := cursor.First(); key != nil; key, _ = cursor.Next() {
@@ -210,7 +205,7 @@ func (db *DB) Keys(s interface{}) ([]string, error) {
 
 func (db *DB) Exists(s interface{}) (bool, error) {
 	exists := false
-	bucket, err := parseInput(s)
+	bucket, err := parseInput(s, false)
 	if err != nil {
 		return exists, err
 	}
@@ -231,7 +226,7 @@ func (db *DB) Exists(s interface{}) (bool, error) {
 }
 
 func (db *DB) Delete(s interface{}) error {
-	bucket, err := parseInput(s)
+	bucket, err := parseInput(s, false)
 	if err != nil {
 		return err
 	}
