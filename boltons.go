@@ -178,35 +178,33 @@ func (db *DB) All(s interface{}) error {
 	return err
 }
 
-func (db *DB) First(s interface{}) error {
-	bucket, err := parseInput(s)
-	if err != nil {
-		return err
+func (db *DB) Keys(s interface{}) ([]string, error) {
+	keys := []string{}
+	errMsg := errors.New("Expected pointer to struct slice")
+
+	sValue := reflect.Indirect(reflect.ValueOf(s))
+	sType := sValue.Type()
+	if sValue.Kind() == reflect.Ptr {
+		sType = sType.Elem()
 	}
 
-	err = db.bolt.View(func(tx *bolt.Tx) error {
-		outer := tx.Bucket(bucket.name)
-		cursor := outer.Cursor()
+	if sType.Kind() != reflect.Struct {
+		return keys, errMsg
+	}
 
-		key, _ := cursor.First()
-		inner := outer.Bucket(key)
+	bucketName := sType.Name()
+	err := db.bolt.View(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket([]byte(bucketName))
+		cursor := bucket.Cursor()
 
-		for key, value := range bucket.values {
-			bVal := inner.Get([]byte(key))
-
-			out := reflect.New(value.Type()).Interface()
-			err := json.Unmarshal(bVal, &out)
-			if err != nil {
-				return err
-			}
-
-			value.Set(reflect.Indirect(reflect.ValueOf(out)))
+		for key, _ := cursor.First(); key != nil; key, _ = cursor.Next() {
+			keys = append(keys, string(key))
 		}
 
 		return nil
 	})
 
-	return err
+	return keys, err
 }
 
 func (db *DB) Close() {

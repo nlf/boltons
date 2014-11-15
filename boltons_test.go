@@ -75,20 +75,6 @@ func TestGet(t *testing.T) {
 	assert.Equal(ts.TestBool, false, "should have the TestBool field set")
 }
 
-func TestFirst(t *testing.T) {
-	assert := assert.New(t)
-
-	db, err := Open("test.db", 0600, nil)
-	defer db.Close()
-	assert.NoError(err, "should not error")
-
-	ts := TestStruct{}
-	err = db.First(&ts)
-	assert.NoError(err, "should not error")
-	assert.NotEqual(ts.ID, "", "should have an ID")
-	assert.NotEqual(ts.TestString, "", "should have a TestString")
-}
-
 func TestAll(t *testing.T) {
 	assert := assert.New(t)
 
@@ -100,4 +86,20 @@ func TestAll(t *testing.T) {
 	err = db.All(&tsList)
 	assert.NoError(err, "should not error")
 	assert.NotEqual(len(tsList), 0, "should have members")
+}
+
+func TestKeys(t *testing.T) {
+	assert := assert.New(t)
+
+	db, err := Open("test.db", 0600, nil)
+	defer db.Close()
+	assert.NoError(err, "should not error")
+
+	keys, err := db.Keys(TestStruct{})
+	assert.NoError(err, "should not error")
+	assert.NotEqual(len(keys), 0, "should have keys")
+
+	keys, err = db.Keys(&TestStruct{})
+	assert.NoError(err, "should not error")
+	assert.NotEqual(len(keys), 0, "should have keys")
 }
