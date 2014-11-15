@@ -125,3 +125,27 @@ func TestKeys(t *testing.T) {
 	assert.NoError(err, "should not error")
 	assert.NotEqual(len(keys), 0, "should have keys")
 }
+
+func TestExists(t *testing.T) {
+	assert := assert.New(t)
+
+	db, err := Open("test.db", 0600, nil)
+	defer db.Close()
+	assert.NoError(err, "should not error")
+
+	ts := TestStruct{
+		ID: "test-id",
+	}
+
+	exists, err := db.Exists(&ts)
+	assert.NoError(err, "should not error")
+	assert.Equal(exists, true, "should return true")
+
+	ts = TestStruct{
+		ID: "not-here",
+	}
+
+	exists, err = db.Exists(&ts)
+	assert.NoError(err, "should not error")
+	assert.Equal(exists, false, "should return false")
+}

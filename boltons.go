@@ -181,7 +181,7 @@ func (db *DB) All(s interface{}) error {
 
 func (db *DB) Keys(s interface{}) ([]string, error) {
 	keys := []string{}
-	errMsg := errors.New("Expected pointer to struct slice")
+	errMsg := errors.New("Expected pointer to struct")
 
 	sValue := reflect.Indirect(reflect.ValueOf(s))
 	sType := sValue.Type()
@@ -206,6 +206,32 @@ func (db *DB) Keys(s interface{}) ([]string, error) {
 	})
 
 	return keys, err
+}
+
+func (db *DB) Exists(s interface{}) (bool, error) {
+	exists := false
+	bucket, err := parseInput(s)
+	if err != nil {
+		return exists, err
+	}
+
+	err = db.bolt.View(func(tx *bolt.Tx) error {
+		outer := tx.Bucket(bucket.name)
+		id := bucket.values["ID"].String()
+		if id == "" {
+			return nil
+		}
+
+		inner := outer.Bucket([]byte(id))
+		exists = inner != nil
+		return nil
+	})
+
+	return exists, err
+}
+
+func (db *DB) Delete(s interface{}) error {
+	return nil
 }
 
 func (db *DB) Close() {
