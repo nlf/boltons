@@ -151,7 +151,7 @@ func (db *DB) Update(s interface{}) error {
 		inner := outer.Bucket([]byte(id.String()))
 
 		for key, value := range bucket.values {
-			if reflect.DeepEqual(value, reflect.Zero(value.Type())) {
+			if reflect.DeepEqual(value.Interface(), reflect.Zero(value.Type()).Interface()) {
 				bVal := inner.Get([]byte(key))
 
 				out := reflect.New(value.Type()).Interface()

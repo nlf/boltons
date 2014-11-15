@@ -104,12 +104,12 @@ func TestUpdate(t *testing.T) {
 	defer db.Close()
 	assert.NoError(err, "should not error")
 
-	ts := TestStruct{"test-id", "updated string", 1, false}
+	ts := TestStruct{"test-id", "updated string", 3, false}
 	err = db.Update(&ts)
 	assert.NoError(err, "should not error")
 	assert.Equal(ts.ID, "test-id", "should have unchanged ID")
 	assert.Equal(ts.TestString, "updated string", "should have updated string")
-	assert.Equal(ts.TestNumber, 1, "should have unchanged number")
+	assert.Equal(ts.TestNumber, 3, "should have updated number")
 	assert.Equal(ts.TestBool, false, "should have unchanged bool")
 
 	ts2 := TestStruct{
@@ -120,7 +120,7 @@ func TestUpdate(t *testing.T) {
 	assert.NoError(err, "should not error")
 	assert.Equal(ts2.ID, "test-id", "should have unchanged ID")
 	assert.Equal(ts2.TestString, "updated string", "should have updated string")
-	assert.Equal(ts2.TestNumber, 1, "should have unchanged number")
+	assert.Equal(ts2.TestNumber, 3, "should have updated number")
 	assert.Equal(ts2.TestBool, false, "should have unchanged bool")
 }
 
