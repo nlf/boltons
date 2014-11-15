@@ -30,16 +30,17 @@ type parsedBucket struct {
 }
 
 func parseInput(s interface{}) (parsedBucket, error) {
+	errMsg := errors.New("Expected struct pointer")
 	bucket := parsedBucket{}
 
 	sType := reflect.TypeOf(s)
 	if sType.Kind() != reflect.Ptr {
-		return bucket, errors.New("Must be a pointer to a struct")
+		return bucket, errMsg
 	}
 
 	sValue := reflect.Indirect(reflect.ValueOf(s))
 	if sValue.Kind() != reflect.Struct {
-		return bucket, errors.New("Must be a pointer to a struct")
+		return bucket, errMsg
 	}
 
 	sType = sType.Elem()
