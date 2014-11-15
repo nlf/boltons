@@ -231,7 +231,23 @@ func (db *DB) Exists(s interface{}) (bool, error) {
 }
 
 func (db *DB) Delete(s interface{}) error {
-	return nil
+	bucket, err := parseInput(s)
+	if err != nil {
+		return err
+	}
+
+	err = db.bolt.Update(func(tx *bolt.Tx) error {
+		outer := tx.Bucket(bucket.name)
+		id := bucket.values["ID"].String()
+		if id == "" {
+			return nil
+		}
+
+		err := outer.DeleteBucket([]byte(id))
+		return err
+	})
+
+	return err
 }
 
 func (db *DB) Close() {

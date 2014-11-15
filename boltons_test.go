@@ -149,3 +149,27 @@ func TestExists(t *testing.T) {
 	assert.NoError(err, "should not error")
 	assert.Equal(exists, false, "should return false")
 }
+
+func TestDelete(t *testing.T) {
+	assert := assert.New(t)
+
+	db, err := Open("test.db", 0600, nil)
+	defer db.Close()
+	assert.NoError(err, "should not error")
+
+	ts := TestStruct{
+		ID: "test-id",
+	}
+
+	exists, err := db.Exists(&ts)
+	assert.NoError(err, "should not error")
+	assert.Equal(exists, true, "should return true")
+
+	err = db.Delete(&ts)
+	assert.NoError(err, "should not error")
+
+	exists, err = db.Exists(&ts)
+	assert.NoError(err, "should not error")
+	assert.Equal(exists, false, "should return false")
+
+}
