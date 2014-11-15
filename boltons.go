@@ -134,6 +134,52 @@ func (db *DB) Get(s interface{}) error {
 	return err
 }
 
+func (db *DB) Update(s interface{}) error {
+	bucket, err := parseInput(s, true)
+	if err != nil {
+		return err
+	}
+
+	err = db.bolt.Update(func(tx *bolt.Tx) error {
+		outer := tx.Bucket(bucket.name)
+
+		id := bucket.values["ID"]
+		if id.String() == "" {
+			return errors.New("Unable to fetch without an ID")
+		}
+
+		inner := outer.Bucket([]byte(id.String()))
+
+		for key, value := range bucket.values {
+			if reflect.DeepEqual(value, reflect.Zero(value.Type())) {
+				bVal := inner.Get([]byte(key))
+
+				out := reflect.New(value.Type()).Interface()
+				err := json.Unmarshal(bVal, &out)
+				if err != nil {
+					return err
+				}
+
+				value.Set(reflect.Indirect(reflect.ValueOf(out)))
+			} else {
+				bVal, err := json.Marshal(value.Interface())
+				if err != nil {
+					return nil
+				}
+
+				err = inner.Put([]byte(key), bVal)
+				if err != nil {
+					return err
+				}
+			}
+		}
+
+		return nil
+	})
+
+	return err
+}
+
 func (db *DB) All(s interface{}) error {
 	errMsg := errors.New("Expected pointer to struct slice")
 
