@@ -154,6 +154,10 @@ func (db *DB) All(s interface{}) error {
 	bucketName := sType.Name()
 	err := db.bolt.View(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket([]byte(bucketName))
+		if bucket == nil {
+			return nil
+		}
+
 		cursor := bucket.Cursor()
 
 		for key, _ := cursor.First(); key != nil; key, _ = cursor.Next() {
