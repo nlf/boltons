@@ -125,7 +125,9 @@ func (db *DB) Get(s interface{}) error {
 				return err
 			}
 
-			value.Set(reflect.Indirect(reflect.ValueOf(out)))
+			if out != nil {
+				value.Set(reflect.Indirect(reflect.ValueOf(out)))
+			}
 		}
 
 		return nil
@@ -160,7 +162,9 @@ func (db *DB) Update(s interface{}) error {
 					return err
 				}
 
-				value.Set(reflect.Indirect(reflect.ValueOf(out)))
+				if out != nil {
+					value.Set(reflect.Indirect(reflect.ValueOf(out)))
+				}
 			} else {
 				bVal, err := json.Marshal(value.Interface())
 				if err != nil {
@@ -220,7 +224,9 @@ func (db *DB) All(s interface{}) error {
 					return err
 				}
 
-				field.Set(reflect.Indirect(reflect.ValueOf(out)))
+				if out != nil {
+					field.Set(reflect.Indirect(reflect.ValueOf(out)))
+				}
 			}
 
 			sValue.Set(reflect.Append(sValue, member))
