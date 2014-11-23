@@ -27,6 +27,7 @@ func Open(path string, mode os.FileMode, options *bolt.Options) (*DB, error) {
 type parsedBucket struct {
 	name   []byte
 	values map[string]reflect.Value
+	fields map[string]reflect.StructField
 }
 
 func parseInput(s interface{}, writable bool) (parsedBucket, error) {
@@ -49,12 +50,14 @@ func parseInput(s interface{}, writable bool) (parsedBucket, error) {
 
 	bucket.name = []byte(sType.Name())
 	bucket.values = make(map[string]reflect.Value)
+	bucket.fields = make(map[string]reflect.StructField)
 
 	for i := 0; i < sValue.NumField(); i++ {
 		fValue := sValue.Field(i)
 		fType := sType.Field(i)
 
 		bucket.values[fType.Name] = fValue
+		bucket.fields[fType.Name] = fType
 	}
 
 	return bucket, nil
@@ -153,7 +156,12 @@ func (db *DB) Update(s interface{}, changes map[string]interface{}) error {
 		inner := outer.Bucket([]byte(id.String()))
 
 		for key, value := range bucket.values {
-			if val, ok := changes[key]; ok {
+			val, ok := changes[key]
+			if !ok {
+				jsonKey := bucket.fields[key].Tag.Get("json")
+				val, ok = changes[jsonKey]
+			}
+			if ok {
 				bVal, err := json.Marshal(val)
 				if err != nil {
 					return nil

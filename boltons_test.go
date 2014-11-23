@@ -136,6 +136,13 @@ func TestUpdate(t *testing.T) {
 	assert.Equal(ts.TestString, "updated string again", "should have updated string")
 	assert.Equal(ts.TestNumber, 4, "should have updated number")
 	assert.Equal(ts.TestBool, false, "should have updated bool")
+
+	err = db.Get(&ts2)
+	assert.NoError(err, "should not error")
+	assert.Equal(ts2.ID, "test-id", "should have unchanged ID")
+	assert.Equal(ts2.TestString, "updated string again", "should have updated string")
+	assert.Equal(ts2.TestNumber, 4, "should have updated number")
+	assert.Equal(ts2.TestBool, false, "should have updated bool")
 }
 
 func TestAll(t *testing.T) {
