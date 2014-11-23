@@ -104,13 +104,16 @@ func TestUpdate(t *testing.T) {
 	defer db.Close()
 	assert.NoError(err, "should not error")
 
-	ts := TestStruct{"test-id", "updated string", 3, false}
-	err = db.Update(&ts)
+	ts := TestStruct{
+		ID: "test-id",
+	}
+	changes := map[string]interface{}{"TestString": "updated string", "TestNumber": 3, "TestBool": true}
+	err = db.Update(&ts, changes)
 	assert.NoError(err, "should not error")
 	assert.Equal(ts.ID, "test-id", "should have unchanged ID")
 	assert.Equal(ts.TestString, "updated string", "should have updated string")
 	assert.Equal(ts.TestNumber, 3, "should have updated number")
-	assert.Equal(ts.TestBool, false, "should have unchanged bool")
+	assert.Equal(ts.TestBool, true, "should have updated bool")
 
 	ts2 := TestStruct{
 		ID: "test-id",
@@ -121,7 +124,18 @@ func TestUpdate(t *testing.T) {
 	assert.Equal(ts2.ID, "test-id", "should have unchanged ID")
 	assert.Equal(ts2.TestString, "updated string", "should have updated string")
 	assert.Equal(ts2.TestNumber, 3, "should have updated number")
-	assert.Equal(ts2.TestBool, false, "should have unchanged bool")
+	assert.Equal(ts2.TestBool, true, "should have updated bool")
+
+	ts = TestStruct{
+		ID: "test-id",
+	}
+	changes = map[string]interface{}{"TestString": "updated string again", "TestNumber": 4, "TestBool": false}
+	err = db.Update(&ts, changes)
+	assert.NoError(err, "should not error")
+	assert.Equal(ts.ID, "test-id", "should have unchanged ID")
+	assert.Equal(ts.TestString, "updated string again", "should have updated string")
+	assert.Equal(ts.TestNumber, 4, "should have updated number")
+	assert.Equal(ts.TestBool, false, "should have updated bool")
 }
 
 func TestAll(t *testing.T) {

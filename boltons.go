@@ -136,7 +136,7 @@ func (db *DB) Get(s interface{}) error {
 	return err
 }
 
-func (db *DB) Update(s interface{}) error {
+func (db *DB) Update(s interface{}, changes map[string]interface{}) error {
 	bucket, err := parseInput(s, true)
 	if err != nil {
 		return err
@@ -153,7 +153,19 @@ func (db *DB) Update(s interface{}) error {
 		inner := outer.Bucket([]byte(id.String()))
 
 		for key, value := range bucket.values {
-			if reflect.DeepEqual(value.Interface(), reflect.Zero(value.Type()).Interface()) {
+			if val, ok := changes[key]; ok {
+				bVal, err := json.Marshal(val)
+				if err != nil {
+					return nil
+				}
+
+				err = inner.Put([]byte(key), bVal)
+				if err != nil {
+					return err
+				}
+
+				value.Set(reflect.Indirect(reflect.ValueOf(val)))
+			} else {
 				bVal := inner.Get([]byte(key))
 
 				out := reflect.New(value.Type()).Interface()
@@ -164,16 +176,6 @@ func (db *DB) Update(s interface{}) error {
 
 				if out != nil {
 					value.Set(reflect.Indirect(reflect.ValueOf(out)))
-				}
-			} else {
-				bVal, err := json.Marshal(value.Interface())
-				if err != nil {
-					return nil
-				}
-
-				err = inner.Put([]byte(key), bVal)
-				if err != nil {
-					return err
 				}
 			}
 		}
