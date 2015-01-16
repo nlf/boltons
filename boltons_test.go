@@ -6,6 +6,10 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+type UnknownStruct struct {
+	ID string
+}
+
 type TestStruct struct {
 	ID         string
 	TestString string
@@ -172,6 +176,15 @@ func TestKeys(t *testing.T) {
 	keys, err = db.Keys(&TestStruct{})
 	assert.NoError(err, "should not error")
 	assert.NotEqual(len(keys), 0, "should have keys")
+
+	keys, err = db.Keys(UnknownStruct{})
+	assert.NoError(err, "should not error")
+	assert.Equal(len(keys), 0, "should not have keys")
+
+	keys, err = db.Keys(&UnknownStruct{})
+	assert.NoError(err, "should not error")
+	assert.Equal(len(keys), 0, "should have keys")
+
 }
 
 func TestExists(t *testing.T) {
